@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:giphy_client/giphy_client.dart';
+
+import 'bloc_base.dart';
+import 'bloc_giphy.dart';
 
 void main() => runApp(MyApp());
 
@@ -22,19 +24,20 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Simply Giphy',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: simplyGiphyColor,
-      ),
-      home: SimplyGiphyHomePage(),
-    );
+        title: 'Simply Giphy',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          primarySwatch: simplyGiphyColor,
+        ),
+        home: BlocProvider<GiphyBloc>(
+          bloc: GiphyBloc(),
+          child: SimplyGiphyHomePage(),
+        ));
   }
 }
 
-class SimplyGiphyHomePage extends StatefulWidget {
-  final client = new GiphyClient(apiKey: 'aga');
 
+class SimplyGiphyHomePage extends StatefulWidget {
   SimplyGiphyHomePage({Key key}) : super(key: key);
 
   @override
@@ -45,13 +48,13 @@ class SimplyGiphyHomePage extends StatefulWidget {
 
 class _SimplyGiphyHomePageState extends State<SimplyGiphyHomePage> {
   TextEditingController _textSearchController = TextEditingController();
-  GiphyCollection _trendingGifs;
 
-  _getTrendingGifs() async {
-    final GiphyCollection gifs = await widget.client.trending();
+  GiphyBloc giphyBloc;
 
-    print(gifs);
-    _trendingGifs = gifs;
+  @override
+  void initState() {
+    super.initState();
+    giphyBloc = BlocProvider.of<GiphyBloc>(context);
   }
 
   @override
@@ -69,28 +72,32 @@ class _SimplyGiphyHomePageState extends State<SimplyGiphyHomePage> {
         ),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            TextField(
-              controller: _textSearchController,
-              decoration: InputDecoration(labelText: 'Поиск'),
-            ),
-            Expanded(
-              child: GridView.count(
-                  crossAxisCount: 2,
-                  children: <String>[
-                    'assets/giphy_logo_original_s.png',
-                    'assets/giphy_logo_original_s.png',
-                    'assets/giphy_logo_original_s.png',
-                    'assets/giphy_logo_original_s.png',
-                  ]
-                      .map((address) => GridTile(
-                          child: Image.asset(address, fit: BoxFit.fill)))
-                      .toList()),
-            )
-          ],
-        ),
+        child: StreamBuilder<List<GiphyGif>>(
+            stream: giphyBloc.outGifList,
+            initialData: [],
+            builder:
+                (BuildContext context, AsyncSnapshot<List<GiphyGif>> snapshot) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: <Widget>[
+//                      TextField(
+//                        controller: _textSearchController,
+//                        decoration: InputDecoration(labelText: 'Поиск'),
+//                      ),
+                      Expanded(
+                        child: GridView.count(
+                          crossAxisCount: 2,
+                          children: snapshot.data.map((giphyGif) {
+                            return Image.network(giphyGif.images.previewGif.url,
+                                fit: BoxFit.cover);
+                          }).toList(),
+                        ),
+                      )
+                    ],
+                  ),
+                );
+            }),
       ),
     );
   }
